@@ -53,6 +53,7 @@ on:
 
 jobs:
   build:
+  build:
     name: Build OFRP + CRB by ${{ github.actor }}
     runs-on: ubuntu-latest
     if: github.event.repository.owner.id == github.event.sender.id
@@ -62,11 +63,15 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v4
-    - run: echo "::group::User Environment Variables
-Installer: ${{ inputs.RECOVERY_INSTALLER }}
-TAR: ${{ inputs.RECOVERY_TAR }}
-CRB: ${{ inputs.CRB_PREP }} ::endgroup::"
+    - run: |
+        echo "::group::User Environment Variables"
+        echo "Installer: ${{ inputs.RECOVERY_INSTALLER }}"
+        echo "TAR: ${{ inputs.RECOVERY_TAR }}"
+        echo "CRB: ${{ inputs.CRB_PREP }}"
+        echo "::endgroup::"
     - uses: rokibhasansagar/slimhub_actions@main
+    - uses: pierotofy/set-swap-space@v2
+      with:
     - uses: pierotofy/set-swap-space@v2
       with:
         swap-size-gb: 24
