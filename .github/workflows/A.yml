@@ -107,13 +107,11 @@ jobs:
         cd ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
         git clone ${{ inputs.DEVICE_TREE }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
         cd ${{ inputs.DEVICE_PATH }}
-        printf "DEVICE_TREE_COMMIT=%s
-" "$(git rev-parse HEAD)" >> $GITHUB_ENV
+        printf "DEVICE_TREE_COMMIT=%s" "$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: 🔥 INJECT ALL 28 FLAGS (NO ECHO)
       run: |
-        printf "::group::🔥 Injecting ALL 28 OrangeFox Flags
-"
+        printf "::group::🔥 Injecting ALL 28 OrangeFox Flags"
         cd ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}
         
         # 🔥 28 FLAGS ARRAY
@@ -152,10 +150,8 @@ jobs:
         : > flags.sh
         
         for flag in "${ALL_FLAGS[@]}"; do
-          printf "export %s
-" "$flag" >> flags.sh
-          printf "%s
-" "$flag" >> BoardConfig.mk
+          printf "export %s" "$flag" >> flags.sh
+          printf "%s" "$flag" >> BoardConfig.mk
         done
         
         printf "✅ %d FLAGS injected!
