@@ -64,8 +64,7 @@ jobs:
 
     - name: Display Inputs
       run: |
-        printf "::group::User Environment Variables
-"
+        printf "::group::User Environment Variables"
         printf "Include Recovery Installer: %s
 " "${{ inputs.RECOVERY_INSTALLER }}"
         printf "Release recovery.tar: %s
