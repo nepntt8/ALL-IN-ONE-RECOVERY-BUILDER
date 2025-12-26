@@ -1,10 +1,10 @@
-name: SkyHawk [SHRP] - ALL FLAGS ENABLED
+name: SkyHawk [SHRP] - FIXED
 
 on:
   workflow_dispatch:
     inputs:
       MANIFEST:
-        description: 'SHRP Manifest'
+        description: 'SHRP Manifest (For old SHRP manifest, use v3_9.0, v3_11.0)'
         required: true
         default: 'https://github.com/SHRP-Reborn/manifest.git'
       MANIFEST_BRANCH:
@@ -20,21 +20,21 @@ on:
       DEVICE_TREE:
         description: 'Custom Recovery Tree'
         required: true
-        default: 'https://github.com/TeamWin/android_device_samsung_m14x.git'
+        default: 'https://github.com/TeamWin/android_device_samsung_m14x.git' 
       DEVICE_TREE_BRANCH:
-        description: 'Device Tree Branch'
+        description: 'Custom Recovery Tree Branch'
         required: true
         default: 'android-12.1'
       DEVICE_PATH:
-        description: 'Device Path (device/vendor/codename)'
+        description: 'Specify your Device Path'
         required: true
         default: 'device/samsung/m14x'
       DEVICE_NAME:
-        description: 'Device Codename'
+        description: 'Specify your Device Codename'
         required: true
         default: 'm14x'
       BUILD_TARGET:
-        description: 'Build Target'
+        description: 'Specify your Build Target'
         required: true
         default: 'recovery'
         type: choice
@@ -43,49 +43,18 @@ on:
         - recovery
         - vendorboot
       LDCHECK:
-        description: 'Run LDCHECK (decryption deps)'
+        description: 'Use LDCHECK'
         required: false
         default: 'false'
         type: boolean
       LDCHECKPATH:
-        description: 'LDCheck path'
+        description: 'Path of blobs to check'
         required: true
         default: 'system/bin/qseecomd'
-      # 🔥 ALL FLAGS
-      A_ONLY:
-        description: 'A-Only Device (No A/B)'
-        required: false
-        default: 'true'
-        type: boolean
-      NON_VANILLA:
-        description: 'Non-Vanilla (GSI/AVB/CRB)'
-        required: false
-        default: 'true'
-        type: boolean
-      SAMSUNG_VARIANT:
-        description: 'Samsung Variant UI'
-        required: false
-        default: 'true'
-        type: boolean
-      AVB_PATCH:
-        description: 'AVB 2.0 Patching'
-        required: false
-        default: 'true'
-        type: boolean
-      GSI_SUPPORT:
-        description: 'GSI Flashing + Resizing'
-        required: false
-        default: 'true'
-        type: boolean
-      CRB_DECRYPT:
-        description: 'CRB Decryption'
-        required: false
-        default: 'true'
-        type: boolean
 
 jobs:
   build:
-    name: Build SHRP [A-Only/NonVanilla] by ${{ github.actor }}
+    name: Build SHRP by ${{ github.actor }}
     runs-on: ubuntu-latest
     if: github.event.repository.owner.id == github.event.sender.id
     env:
@@ -96,20 +65,18 @@ jobs:
     steps:
     - name: Check Out
       uses: actions/checkout@v4
-
-    - name: Display Inputs + Flags
+      
+    - name: Display Inputs
       run: |
-        echo "=== FLAGS ENABLED ==="
-        echo "A-Only: ${{ inputs.A_ONLY }}"
-        echo "Non-Vanilla: ${{ inputs.NON_VANILLA }}"
-        echo "Samsung: ${{ inputs.SAMSUNG_VARIANT }}"
-        echo "AVB: ${{ inputs.AVB_PATCH }}"
-        echo "GSI: ${{ inputs.GSI_SUPPORT }}"
-        echo "CRB: ${{ inputs.CRB_DECRYPT }}"
+        echo "Displaying variables/inputs."
+        echo "Manifest Branch: ${{ inputs.MANIFEST_BRANCH }}"
+        echo "Device Tree: ${{ inputs.DEVICE_TREE }}"
+        echo "Device Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
+        echo "Build Target: ${{ inputs.BUILD_TARGET }}image"
 
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
-
+      
     - name: Set Swap Space
       uses: pierotofy/set-swap-space@master
       with:
@@ -117,13 +84,13 @@ jobs:
 
     - name: Check Manifest Branch
       run: |
-        if [ "${{ inputs.MANIFEST_BRANCH }}" == 'v3_11.0' ] || [ "${{ inputs.MANIFEST_BRANCH }}" == 'shrp-12.1' ]; then
+        if [ ${{ inputs.MANIFEST_BRANCH }} == 'v3_11.0' ] || [ ${{ inputs.MANIFEST_BRANCH }} == 'shrp-12.1' ]; then
             echo "CHECK_LEGACY_BRANCH=false" >> $GITHUB_ENV
         else
             echo "CHECK_LEGACY_BRANCH=true" >> $GITHUB_ENV
         fi
 
-    - name: Prepare Environment
+    - name: Prepare the environment
       run: |
         sudo apt update && sudo apt -y upgrade && sudo apt -y install gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev libncurses5 python3
 
@@ -137,7 +104,7 @@ jobs:
       with:
         distribution: 'zulu'
         java-version: '8'
-
+        
     - name: Install Git-Repo
       run: |
         mkdir ~/bin
@@ -157,50 +124,13 @@ jobs:
       run: |
         cd android-recovery
         repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-
+      
     - name: Clone Device Tree
       run: |
         cd android-recovery
         git clone ${{ inputs.DEVICE_TREE }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ./${{ inputs.DEVICE_PATH }}
         cd ${{ inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
-
-    - name: 🔥 INJECT ALL FLAGS
-      run: |
-        cd android-recovery/${{ inputs.DEVICE_PATH }}
-        # Create/Update BoardConfig.mk with ALL FLAGS
-        cat >> BoardConfig.mk << 'EOF'
-
-# 🔥 AUTO-GENERATED SHRP FLAGS (A-Only Non-Vanilla)
-SHRP_DEVICE := m14x
-SHRP_PATH := device/samsung/m14x
-SHRP_MAINTAINER := ${{ github.actor }}
-SHRP_AB := false
-SHRP_CUSTOM_VOLUME_KEY := true
-SHRP_DUP_MOUNT_POINTS := true
-SHRP_DEVICE_PARTITION_MOUNT_POINT := true
-SHRP_RECOVERY_SDCARD_ON_DATA := true
-SHRP_NO_FLASH_ON_TWICE := true
-SHRP_FLASH_UNIFIED_ZIP := true
-SHRP_DISABLE_MOUNT_SYSTEM_VENDOR := false
-
-# Samsung A-Only Features
-TARGET_SCREEN_DENSITY := 400
-TARGET_RECOVERY_PIXEL_FORMAT := "RGBX_8888"
-BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
-TARGET_RECOVERY_FSTAB := device/samsung/m14x/recovery/root/fstab.qcom
-
-# Non-Vanilla + AVB + GSI
-SHRP_NON_VANILLA := true
-SHRP_VARIANT := samsung
-SHRP_AVB_PATCH := true
-OF_PATCH_AVB20 := 1
-OF_SUPPORT_GSI_FLASHING := 1
-FOX_USE_NANO_EDITOR := 1
-OF_CRYPTPOLICY := 1
-FOX_VANILLA_BUILD := 0
-EOF
-        echo "✅ ALL 25+ FLAGS INJECTED!"
 
     - name: Create Output Directory
       run: |
@@ -212,63 +142,91 @@ EOF
         cd android-recovery
         if [ -f ${{ inputs.DEVICE_PATH }}/shrp_${{ inputs.DEVICE_NAME }}.mk ]; then
             echo "DEVICE_MAKEFILE=shrp_${{ inputs.DEVICE_NAME }}" >> $GITHUB_ENV
-            echo "✅ SHRP makefile: shrp_${{ inputs.DEVICE_NAME }}.mk"
+            echo "Found SHRP makefile: shrp_${{ inputs.DEVICE_NAME }}.mk"
+        elif [ -f ${{ inputs.DEVICE_PATH }}/twrp_${{ inputs.DEVICE_NAME }}.mk ]; then
+            echo "DEVICE_MAKEFILE=twrp_${{ inputs.DEVICE_NAME }}" >> $GITHUB_ENV
+            echo "Found TWRP makefile: twrp_${{ inputs.DEVICE_NAME }}.mk"
+        elif [ -f ${{ inputs.DEVICE_PATH }}/omni_${{ inputs.DEVICE_NAME }}.mk ]; then
+            echo "DEVICE_MAKEFILE=omni_${{ inputs.DEVICE_NAME }}" >> $GITHUB_ENV
+            echo "Found Omni makefile: omni_${{ inputs.DEVICE_NAME }}.mk"
         else
+            echo "No recovery makefile found! Creating fallback..."
             echo "DEVICE_MAKEFILE=shrp_${{ inputs.DEVICE_NAME }}" >> $GITHUB_ENV
-            echo "✅ Using fallback: shrp_${{ inputs.DEVICE_NAME }}"
         fi
+        echo "Using makefile: ${{ env.DEVICE_MAKEFILE }}"
 
     - name: Installing python2 for legacy builds
       if: env.CHECK_LEGACY_BRANCH == 'true'
       run: |
         sudo apt-get install python2 python-is-python2
 
-    - name: Building SkyHawk w/ ALL FLAGS
+    - name: Building SkyHawk
       run: |
         cd android-recovery
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
-        # 🔥 EXPORT FLAGS
-        export SHRP_AB=false
-        export SHRP_NON_VANILLA=true
-        export SHRP_VARIANT=samsung
         lunch ${{ env.DEVICE_MAKEFILE }}-eng
-        make clean && mka ${{ inputs.BUILD_TARGET }}image -j$(nproc --all)
+        make clean
+        mka ${{ inputs.BUILD_TARGET }}image -j$(nproc --all)
+        # Ensure output directory exists even on partial builds
         mkdir -p out/target/product/${{ inputs.DEVICE_NAME }}
-        echo "✅ SHRP A-Only Non-Vanilla COMPLETE!"
+        echo "Build complete. Output dir created."
 
-    - name: Check Recovery Output
+    - name: Check if the recovery exists
       if: always()
       run: |
         cd android-recovery
-        find out/target/product -name "*${{ inputs.BUILD_TARGET }}*.img" -o -name "SHRP*.zip" 2>/dev/null || true
-        ls -la out/target/product/${{ inputs.DEVICE_NAME }} || true
+        img_file=$(find "out/target/product" -name "${{ inputs.BUILD_TARGET }}*.img" -print -quit 2>/dev/null || true)
+        zip_file=$(find "out/target/product" -name "SHRP*.zip" -print -quit 2>/dev/null || true)
+        if [ -n "$img_file" ] && [ -f "$img_file" ]; then
+            echo "CHECK_IMG_IS_OK=true" >> $GITHUB_ENV
+            echo "IMG_FILE=$img_file" >> $GITHUB_ENV
+            echo "MD5_IMG=$(md5sum "$img_file" | cut -d ' ' -f 1)" >> $GITHUB_ENV
+            echo "Recovery image found: $img_file"
+        else
+            echo "No recovery image found."
+            ls -la out/target/product/ || true
+        fi
+        if [ -n "$zip_file" ] && [ -f "$zip_file" ]; then
+            echo "CHECK_ZIP_IS_OK=true" >> $GITHUB_ENV
+            echo "MD5_ZIP=$(md5sum "$zip_file" | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        fi
 
     - name: Set Build Date
       run: |
         echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
-
-    - name: Upload Release
-      if: env.CHECK_IMG_IS_OK == 'true'
+      
+    - name: Upload to Release
+      if: always() && env.CHECK_IMG_IS_OK == 'true'
       uses: softprops/action-gh-release@v2
       with:
         files: |
           ${{ env.OUTPUT_DIR }}/${{ inputs.DEVICE_NAME }}/*.img
           ${{ env.OUTPUT_DIR }}/${{ inputs.DEVICE_NAME }}/SHRP*.zip
-        name: "SHRP [A-Only] ${{ inputs.DEVICE_NAME }} - ${{ env.BUILD_DATE }}"
+          ${{ env.OUTPUT_DIR }}/${{ inputs.DEVICE_NAME }}/ramdisk*.*
+        name: Unofficial SHRP For ${{ inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
-          **🔥 A-Only Non-Vanilla SHRP Build**
-          - Manifest: ${{ inputs.MANIFEST_BRANCH }}
-          - Device: [${{ inputs.DEVICE_NAME }}](${{ inputs.DEVICE_TREE }}/tree/${{ inputs.DEVICE_TREE_BRANCH }})
-          - Flags: A-Only | Samsung | AVB | GSI | CRB
+          Build: ${{ inputs.MANIFEST_BRANCH }}
+          Device: [Device Tree/Branch](${{ inputs.DEVICE_TREE }}/tree/${{ inputs.DEVICE_TREE_BRANCH }})
+          Commit: [${{ env.COMMIT_ID }}](${{ inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }})
         prerelease: true
+
+    - name: Debug Output Directory
+      if: always()
+      run: |
+        cd android-recovery || true
+        echo "=== DEBUG: Output Directory Contents ==="
+        find out/target/product -type f -name "*.img" -o -name "SHRP*.zip" 2>/dev/null || echo "No recovery files found"
+        ls -la out/target/product/${{ inputs.DEVICE_NAME }} 2>/dev/null || echo "Device directory empty"
+        echo "======================================="
 
     - name: Run LDCheck
       if: inputs.LDCHECK == 'true'
       run: |
         cd android-recovery/tools || true
-        [ -f ldcheck ] && cp ldcheck ../out/target/product/${{ inputs.DEVICE_NAME }}/recovery/root/ || true
+        [ -f libneeds ] && mv libneeds ../out/target/product/${{ inputs.DEVICE_NAME }}/recovery/root/ || true
+        [ -f ldcheck ] && mv ldcheck ../out/target/product/${{ inputs.DEVICE_NAME }}/recovery/root/ || true
         cd ../out/target/product/${{ inputs.DEVICE_NAME }}/recovery/root || true
         python3 ldcheck -p system/lib64:vendor/lib64:system/lib:vendor/lib -d ${{ inputs.LDCHECKPATH }} || true
       continue-on-error: true
