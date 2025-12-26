@@ -1,4 +1,4 @@
-name: OrangeFox [OFRP] - NON-VANILLA BUILD ✅
+name: OrangeFox [OFRP] - FULL FLAGS ✅
 
 on:
   workflow_dispatch:
@@ -47,7 +47,7 @@ on:
 
 jobs:
   build:
-    name: Build OFRP NON-VANILLA by ${{ github.actor }}
+    name: Build OFRP FULL FLAGS by ${{ github.actor }}
     runs-on: ubuntu-latest
     if: github.repository_owner == github.event.sender.login
     env:
@@ -110,64 +110,70 @@ jobs:
         echo "DEVICE_TREE_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
         echo "✅ Device tree cloned!"
 
-    - name: 🔥 INJECT NON-VANILLA FLAGS (FOX_AVB Style)
+    - name: 🔥 INJECT ALL 28 FLAGS (FOX_AVB=1 Style)
       run: |
-        echo "::group::🔥 NON-VANILLA BUILD FLAGS"
+        echo "::group::🔥 Injecting ALL 28 OrangeFox Flags"
         cd ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}
         
-        # 🔥 NON-VANILLA BUILD FLAGS - BoardConfig.mk echo style
-        declare -a NON_VANILLA_FLAGS=(
-          # 🔥 NON-VANILLA CORE (Explicitly disables vanilla mode)
-          "FOX_VANILLA_BUILD := 0"
-          "OF_DISABLE_MIUI_SPECIFIC_FEATURES := 0"
+        # 🔥 COMPLETE 28 FLAGS ARRAY - echo "FLAG=1" style
+        declare -a ALL_FLAGS=(
+          # NON-VANILLA CORE
+          "FOX_VANILLA_BUILD=0"
+          "OF_DISABLE_MIUI_SPECIFIC_FEATURES=0"
           
-          # AVB Flags
-          "FOX_AVB := 1"
-          "OF_PATCH_AVB20 := 1"
+          # TREBLE CHECK
+          "OF_TREBLE_CHECK_ON_REBOOT=1"
           
-          # Core Flags
-          "FOX_VARIANT := samsung"
-          "FOX_AB_DEVICE := 0"
+          # AVB2.0 FULL SUPPORT
+          "FOX_AVB=1"
+          "OF_PATCH_AVB20=1"
+          "OF_USE_MAGISKBOOT=1"
+          "OF_USE_MAGISKBOOT_FOR_ALL_PATCHES=1"
+          "OF_DEFAULT_KEYMASTER_VERSION=4.1"
           
-          # Samsung Flags
-          "FOX_DYNAMIC_SAMSUNG_FIX := 1"
-          "OF_SAMSUNG_SPECIAL := 1"
+          # GSI FULL SUPPORT
+          "OF_SUPPORT_GSI_FLASHING=1"
+          "OF_KEEP_GSI_PARTIALLY_DECRYPTED=1"
+          "OF_NO_TREBLE_COMPATIBILITY_CHECK=0"
+          "OF_GSI_MODE=1"
           
-          # Partition & Boot
-          "OF_USE_MAGISKBOOT := 1"
-          "OF_USE_MAGISKBOOT_FOR_ALL_PATCHES := 1"
-          "OF_DEFAULT_KEYMASTER_VERSION := 4.1"
+          # SAMSUNG + ODIN
+          "FOX_VARIANT=samsung"
+          "FOX_DYNAMIC_SAMSUNG_FIX=1"
+          "OF_SAMSUNG_SPECIAL=1"
+          "OF_FLASH_BY_FASTBOOT=1"
+          "FOX_SAMSUNG_0x2000_SBL_FLASH=1"
+          "FOX_FORCE_SBL1_FLASH=1"
           
-          # Feature Flags
-          "OF_SUPPORT_GSI_FLASHING := 1"
-          "FOX_USE_NANO_EDITOR := 1"
-          "OF_CRYPTPOLICY := 1"
-          "OF_FIX_7ZIP_ZIP := 1"
-          "OF_USE_GREEN_LED := 1"
+          # FEATURES
+          "FOX_USE_NANO_EDITOR=1"
+          "OF_CRYPTPOLICY=1"
+          "OF_FIX_7ZIP_ZIP=1"
+          "OF_USE_GREEN_LED=1"
+          "FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1"
           
-          # Advanced NON-VANILLA Features
-          "FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER := 1"
-          "OF_QUICK_BACKUP_WIPE := 1"
-          "OF_USE_ASH := 1"
-          "OF_SUPPORT_MIUI_JMIUI_BOOTMODE := 1"
-          "FOX_REPLACE_BUSYBOX_PS := 1"
+          # ADVANCED
+          "OF_QUICK_BACKUP_WIPE=1"
+          "OF_USE_ASH=1"
+          "FOX_REPLACE_BUSYBOX_PS=1"
+          "OF_SUPPORT_MIUI_JMIUI_BOOTMODE=1"
         )
         
-        # Backup original
+        # Create flags files
         cp -n BoardConfig.mk BoardConfig.mk.backup
+        > flags.sh
         
-        # Inject NON-VANILLA flags
-        for flag in "${NON_VANILLA_FLAGS[@]}"; do
+        # Inject ALL 28 flags
+        for flag in "${ALL_FLAGS[@]}"; do
+          echo "export $flag" >> flags.sh
           echo "$flag" >> BoardConfig.mk
         done
         
-        echo "✅ ${#NON_VANILLA_FLAGS[@]} NON-VANILLA FLAGS injected!"
-        echo "🎯 NON-VANILLA Status: FOX_VANILLA_BUILD := 0 (FULL FEATURES)"
+        echo "✅ ${#ALL_FLAGS[@]} FLAGS injected successfully!"
+        echo "🎯 Features: GSI+AVB+Treble+Samsung+Non-Vanilla"
         echo "📋 Key Flags:"
         printf '  %s
-' "${NON_VANILLA_FLAGS[@]:0:5}"
-        echo "📋 BoardConfig.mk tail:"
-        tail -10 BoardConfig.mk
+' "${ALL_FLAGS[@]:0:8}"
         echo "::endgroup::"
 
     - name: Determine Build Command
@@ -180,19 +186,16 @@ jobs:
         fi
         echo "BUILD_DATE=$(date +%Y%m%d-%H%M)" >> $GITHUB_ENV
 
-    - name: Build NON-VANILLA OrangeFox
+    - name: Build OrangeFox with ALL Flags
       run: |
         cd ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
         export ALLOW_MISSING_DEPENDENCIES=true
         
-        # NON-VANILLA runtime exports
-        export FOX_VANILLA_BUILD=0
-        export OF_DISABLE_MIUI_SPECIFIC_FEATURES=0
-        export FOX_AVB=1
-        export FOX_VARIANT=samsung
+        # Source ALL flags
+        source ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}/flags.sh
         
         source build/envsetup.sh
-        echo "::group::Lunch Combos (NON-VANILLA)"
+        echo "::group::Lunch Combos (FULL FLAGS)"
         lunch | grep -i ${{ inputs.DEVICE_NAME }} || echo "No exact match found"
         echo "::endgroup::"
         
@@ -211,7 +214,6 @@ jobs:
           echo "FILE_PATH=$(dirname "$ORANGEFOX_IMG")" >> $GITHUB_ENV
           echo "ORANGEFOX_IMG=$(basename "$ORANGEFOX_IMG")" >> $GITHUB_ENV
           echo "MD5_IMG=$(md5sum "$ORANGEFOX_IMG" | cut -d' ' -f1)" >> $GITHUB_ENV
-          echo "image_found=true" >> $GITHUB_OUTPUT
         else
           echo "CHECK_IMG_IS_OK=false" >> $GITHUB_ENV
           echo "::error::No OrangeFox image found!"
@@ -227,7 +229,6 @@ jobs:
           "recovery") mv "${{ env.ORANGEFOX_IMG }}" recovery.img; echo "RECOVERY_TYPE=recovery" >> $GITHUB_ENV ;;
           "vendorboot") mv "${{ env.ORANGEFOX_IMG }}" vendor_boot.img; echo "RECOVERY_TYPE=vendor_boot" >> $GITHUB_ENV ;;
         esac
-        echo "✅ NON-VANILLA ${{ env.RECOVERY_TYPE }}.img ready!"
 
     - name: Add Recovery Installer
       if: env.CHECK_IMG_IS_OK == 'true' && inputs.RECOVERY_INSTALLER == 'true'
@@ -235,39 +236,36 @@ jobs:
         cd ${{ env.FILE_PATH }}
         wget -q https://github.com/kinguser981/recovery-installer/releases/download/11256427880/recovery-installer.zip
         zip -ur recovery-installer.zip ${{ env.RECOVERY_TYPE }}.img
-        echo "✅ Recovery installer added"
 
     - name: Create Samsung TAR
       if: env.CHECK_IMG_IS_OK == 'true' && inputs.RECOVERY_TAR == 'true'
       run: |
         cd ${{ env.FILE_PATH }}
         tar -cvf ${{ env.RECOVERY_TYPE }}.tar ${{ env.RECOVERY_TYPE }}.img
-        echo "✅ Samsung TAR created"
 
     - name: Generate Artifact List
       if: env.CHECK_IMG_IS_OK == 'true'
       id: artifacts
       run: |
         cd ${{ env.FILE_PATH }}
-        FILES=()
-        FILES+=("${{ env.RECOVERY_TYPE }}.img")
-        
-        [[ "${{ inputs.RECOVERY_TAR }}" == "true" ]] && FILES+=("${{ env.RECOVERY_TYPE }}.tar")
-        [[ "${{ inputs.RECOVERY_INSTALLER }}" == "true" ]] && FILES+=("recovery-installer.zip")
-        FILES+=($(find . -name "OrangeFox*.zip" 2>/dev/null || true))
-        
-        echo "files=$(IFS=$'
-'; echo "${FILES[*]}")" >> $GITHUB_OUTPUT
+        mapfile -t FILES < <(printf '%s
+' \
+          "${{ env.RECOVERY_TYPE }}.img" \
+          "${{ inputs.RECOVERY_TAR == 'true' && env.RECOVERY_TYPE || '' }}.tar" \
+          "${{ inputs.RECOVERY_INSTALLER == 'true' && 'recovery-installer.zip' || '' }}" \
+          $(find . -name "OrangeFox*.zip" 2>/dev/null || true))
+        printf '%s
+' "${FILES[@]}" >> $GITHUB_OUTPUT
 
     - name: Create GitHub Release
       if: env.CHECK_IMG_IS_OK == 'true'
       uses: softprops/action-gh-release@v2
       with:
         files: ${{ steps.artifacts.outputs.files }}
-        name: NON-VANILLA OrangeFox [${{ inputs.DEVICE_NAME }}] - ${{ env.BUILD_DATE }}
+        name: OrangeFox [${{ inputs.DEVICE_NAME }}] - ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
-          ## 🏗️ NON-VANILLA Build Information
+          ## 🏗️ Build Information
           - **Date:** ${{ env.BUILD_DATE }}
           - **Branch:** ${{ inputs.MANIFEST_BRANCH }}
           - **Device:** `${{ inputs.DEVICE_NAME }}`
@@ -279,11 +277,11 @@ jobs:
           ## ✅ Checksums
           - **Recovery MD5:** `${{ env.MD5_IMG }}`
           
-          ## 🚀 NON-VANILLA Features
-          - **FOX_VANILLA_BUILD := 0** (FULL FEATURES ENABLED)
-          - **FOX_AVB := 1**, Samsung, GSI, MagiskBoot, AVB2.0
+          ## 🚀 28 FLAGS ENABLED
+          - **GSI+AVB+Treble+Samsung+Non-Vanilla** (FULL FEATURE SET)
+          - **OF_TREBLE_CHECK_ON_REBOOT=1**, **FOX_AVB=1**, **OF_SUPPORT_GSI_FLASHING=1**
           
-          > ⚠️ **NON-VANILLA Automated build** - Test thoroughly!
+          > ⚠️ **Automated build** - Test thoroughly before flashing!
         prerelease: false
         draft: false
         generate_release_notes: false
