@@ -138,7 +138,7 @@ jobs:
     - if: inputs.CRB_PREP == 'true'
       run: mkdir -p crb-output/${{ inputs.DEVICE_NAME }} && cp ${{ env.FILE_PATH }}/*.img crb-output/${{ inputs.DEVICE_NAME }}/ && mkdir -p crb-output/${{ inputs.DEVICE_NAME }}/ORIGINAL_UPDATE && cp ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}/BoardConfig.mk crb-output/${{ inputs.DEVICE_NAME }}/ORIGINAL_UPDATE/ && cd crb-output && zip -r "${{ inputs.DEVICE_NAME }}-CRB-Kitchen.zip" ${{ inputs.DEVICE_NAME }} && echo "::group::✅ CRB PACKAGE READY
 ${{ inputs.DEVICE_NAME }}-CRB-Kitchen.zip created!
-::endgroup::"
+echo "::endgroup::"
 
     # 🔥 RELEASE
     - if: env.CHECK_IMG_IS_OK == 'true'
