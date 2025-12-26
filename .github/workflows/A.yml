@@ -65,12 +65,9 @@ jobs:
     - name: Display Inputs
       run: |
         printf "::group::User Environment Variables"
-        printf "Include Recovery Installer: %s
-" "${{ inputs.RECOVERY_INSTALLER }}"
-        printf "Release recovery.tar: %s
-" "${{ inputs.RECOVERY_TAR }}"
-        printf "::endgroup::
-"
+        printf "Include Recovery Installer: %s" "${{ inputs.RECOVERY_INSTALLER }}"
+        printf "Release recovery.tar: %s" "${{ inputs.RECOVERY_TAR }}"
+        printf "::endgroup::"
 
     - name: Clean-up
       uses: rokibhasansagar/slimhub_actions@main
