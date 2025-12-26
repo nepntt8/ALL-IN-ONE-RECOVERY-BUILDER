@@ -140,51 +140,7 @@ jobs:
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/${{ github.event.inputs.DEVICE_PATH }}
         cat >> BoardConfig.mk << 'EOF'
 
-# 🔥 NON-VANILLA ORANGEFOX FLAGS (ECHO DEBUG - A-Only Samsung M14x)
-echo FOX_VARIANT := samsung
-echo FOX_VANILLA_BUILD := 0
-echo FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER := 1
-echo FOX_USE_BASH_SHELL := 1
-echo FOX_USE_NANO_EDITOR := 1
 
-# A-Only (CRITICAL for M14x)
-echo FOX_AB_DEVICE := 0
-echo OF_VIRTUAL_AB_DEVICE := 0
-
-# AVB + GSI + CRB
-echo OF_PATCH_AVB20 := 1
-echo OF_SUPPORT_GSI_FLASHING := 1
-echo OF_NO_TREBLE_COMPATIBILITY_CHECK := 1
-echo OF_CRYPTPOLICY := 1
-echo OF_FIX_7ZIP_ZIP := 1
-echo OF_ALLOW_NEW_PARTITION_SCHEME := 1
-
-# Samsung M14x Specific
-echo TARGET_SCREEN_DENSITY := 400
-echo BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
-EOF
-        echo "✅ BoardConfig.mk updated with ECHO flags!"
-        echo "📋 ECHO Flags injected:"
-        echo "   echo FOX_VARIANT := samsung"
-        echo "   echo FOX_VANILLA_BUILD := 0"
-        echo "   echo FOX_AB_DEVICE := 0"
-        echo "   echo OF_PATCH_AVB20 := 1"
-
-    - name: Building OrangeFox NON-VANILLA
-      run: |
-        echo "🔨 Starting NON-VANILLA build..."
-        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        source build/envsetup.sh
-        export ALLOW_MISSING_DEPENDENCIES=true
-        
-        echo "📤 Exporting environment flags..."
-        export FOX_VARIANT=samsung
-        export FOX_VANILLA_BUILD=0
-        export FOX_AB_DEVICE=0
-        export OF_PATCH_AVB20=1
-        export OF_SUPPORT_GSI_FLASHING=1
-        export OF_CRYPTPOLICY=1
-        export FOX_USE_NANO_EDITOR=1
         
         echo "🍽️ Lunch: twrp_${{ github.event.inputs.DEVICE_NAME }}-eng"
         lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng
