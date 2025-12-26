@@ -1,4 +1,4 @@
-name: OrangeFox [OFRP] - NON-VANILLA A-ONLY + CRB TOOL ✅
+name: OrangeFox [OFRP] - NON-VANILLA A-ONLY + CRB TOOL ✅ FIXED
 
 on:
   workflow_dispatch:
@@ -47,6 +47,19 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.repository.owner.id == github.event.sender.id
     steps:
+    - name: 🔥 MAXIMIZE DISK SPACE (6GB FREE)
+      uses: easimon/maximize-build-space@v1
+      with:
+        root-reserve-mb: 512
+        swap-size-mb: 4096
+        remove-dotnet: 'true'
+        remove-uwp: 'true'
+
+    - name: Disk Check Before
+      run: |
+        df -h
+        free -h
+
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -57,28 +70,15 @@ jobs:
         echo "ECHO DEBUG: ${{ github.event.inputs.ECHO_DEBUG }}"
         echo "CRB PREP: ${{ github.event.inputs.CRB_PREP }}"
 
-    - name: 🔥 Setup 24GB Swap (Manual)
-      run: |
-        sudo fallocate -l 24G /swapfile
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
-        echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
-        sudo sysctl vm.swappiness=10
-        free -h
-        echo "✅ 24GB Swap ready!"
-
-    - name: Build Environment + CRB Tools
+    - name: Build Environment
       run: |
         sudo apt update && sudo apt install -y git bc bison flex libssl-dev \
-        python3 python2 ccache repo make clang lld zip unzip wget bc python-is-python3
+        python3 python-is-python3 ccache repo make clang lld zip unzip wget
         git clone https://gitlab.com/OrangeFox/misc/scripts
         cd scripts && sudo bash setup/android_build_env.sh
         
-        if [ "${{ github.event.inputs.CRB_PREP }}" = "true" ]; then
-          mkdir -p crb-output
-          echo "✅ CRB Kitchen prep enabled!"
-        fi
+        # Clean cache early
+        sudo rm -rf /usr/local/lib/python3.*/site-packages/* || true
 
     - name: Sync OrangeFox (${{ github.event.inputs.MANIFEST_BRANCH }})
       run: |
@@ -88,6 +88,9 @@ jobs:
         cd sync
         ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} \
           --path fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        
+        echo "Disk after sync:"
+        df -h .
 
     - name: Clone Device Tree
       run: |
@@ -97,10 +100,9 @@ jobs:
           ${{ github.event.inputs.DEVICE_PATH }}
         echo "✅ Device tree cloned!"
 
-    - name: 🔥 INJECT FLAGS (Method 4 - Array + Loop)
+    - name: 🔥 INJECT FLAGS (Method 4)
       run: |
         MODE="${{ github.event.inputs.ECHO_DEBUG && 'ECHO' || 'REAL' }}"
-        echo "Injecting flags - $MODE MODE"
         cd "OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/${{ github.event.inputs.DEVICE_PATH }}"
         
         if [ "$MODE" = "REAL" ]; then
@@ -111,76 +113,48 @@ jobs:
             "OF_PATCH_AVB20 := 1"
             "OF_SUPPORT_GSI_FLASHING := 1"
             "FOX_USE_NANO_EDITOR := 1"
-            "OF_CRYPTPOLICY := 1"
-            "OF_FIX_7ZIP_ZIP := 1"
-            "OF_USE_GREEN_LED := 1"
           )
-          
-          for flag in "${FLAGS[@]}"; do
+          for flag in "${FLAGS[@]}"; do echo "$flag" >> BoardConfig.mk; done
+          echo "✅ REAL FLAGS (${#FLAGS[@]})"
+        else
+          for flag in "echo FOX_VARIANT := samsung" "echo FOX_VANILLA_BUILD := 0"; do
             echo "$flag" >> BoardConfig.mk
           done
-          echo "✅ REAL FLAGS injected (${#FLAGS[@]} total)!"
-        else
-          ECHO_FLAGS=(
-            "echo FOX_VARIANT := samsung"
-            "echo FOX_VANILLA_BUILD := 0"
-            "echo FOX_AB_DEVICE := 0"
-          )
-          
-          for eflag in "${ECHO_FLAGS[@]}"; do
-            echo "$eflag" >> BoardConfig.mk
-          done
-          echo "✅ ECHO MODE injected (${#ECHO_FLAGS[@]} lines)!"
+          echo "✅ ECHO MODE"
         fi
-        
-        echo "📋 BoardConfig.mk preview:"
-        tail -10 BoardConfig.mk
+        tail -7 BoardConfig.mk
 
     - name: Build OrangeFox
       run: |
         cd "OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}"
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
-        export FOX_VARIANT=samsung
-        export FOX_VANILLA_BUILD=0
-        export FOX_AB_DEVICE=0
+        lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng || lunch 1
         
-        echo "Available lunch combos:"
-        lunch | grep ${{ github.event.inputs.DEVICE_NAME }} || true
-        
-        lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng
+        echo "Building ${{ github.event.inputs.BUILD_TARGET }}..."
         mka ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)
 
-    - name: 🔥 CRB Kitchen Package (If Enabled)
+    - name: 🔥 CRB Package
       if: github.event.inputs.CRB_PREP == 'true'
       run: |
-        echo "📦 Creating CRB-ready package..."
         mkdir -p crb-output/${{ github.event.inputs.DEVICE_NAME }}
-        
         cp OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.img \
           crb-output/${{ github.event.inputs.DEVICE_NAME }}/
-        
-        mkdir -p crb-output/${{ github.event.inputs.DEVICE_NAME }}/ORIGINAL_UPDATE
-        cp "OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/${{ github.event.inputs.DEVICE_PATH }}/BoardConfig.mk" \
-          crb-output/${{ github.event.inputs.DEVICE_NAME }}/BoardConfig.mk
-        
-        cd crb-output
-        zip -r "${{ github.event.inputs.DEVICE_NAME }}-CRB-Package.zip" ${{ github.event.inputs.DEVICE_NAME }}/
-        echo "✅ CRB package: ${{ github.event.inputs.DEVICE_NAME }}-CRB-Package.zip"
+        cd crb-output && zip -r "${{ github.event.inputs.DEVICE_NAME }}-CRB.zip" *
 
     - name: Upload Artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: OrangeFox-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.MANIFEST_BRANCH }}
+        name: OFRP-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.MANIFEST_BRANCH }}
         path: |
           OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.img
           OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.zip
           crb-output/*.zip
+        retention-days: 7
 
-    - name: Cleanup Swap
+    - name: Final Disk Check
       if: always()
       run: |
-        sudo swapoff /swapfile
-        sudo rm -f /swapfile
-        echo "🧹 Swap cleaned up"
+        df -h
+        du -sh OrangeFox/ || true
