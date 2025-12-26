@@ -65,8 +65,7 @@ jobs:
     - run: echo "::group::User Environment Variables
 Installer: ${{ inputs.RECOVERY_INSTALLER }}
 TAR: ${{ inputs.RECOVERY_TAR }}
-CRB: ${{ inputs.CRB_PREP }}
-::endgroup::"
+CRB: ${{ inputs.CRB_PREP }} ::endgroup::"
     - uses: rokibhasansagar/slimhub_actions@main
     - uses: pierotofy/set-swap-space@v2
       with:
