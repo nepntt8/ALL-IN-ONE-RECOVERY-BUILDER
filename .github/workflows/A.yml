@@ -65,7 +65,8 @@ jobs:
     - run: echo "::group::User Environment Variables
 Installer: ${{ inputs.RECOVERY_INSTALLER }}
 TAR: ${{ inputs.RECOVERY_TAR }}
-CRB: ${{ inputs.CRB_PREP }}::endgroup::"
+CRB: ${{ inputs.CRB_PREP }}
+::endgroup::"
     - uses: rokibhasansagar/slimhub_actions@main
     - uses: pierotofy/set-swap-space@v2
       with:
@@ -107,7 +108,8 @@ CRB: ${{ inputs.CRB_PREP }}::endgroup::"
 
     # 🔥 FLAGS SUMMARY
     - run: echo "::group::✅ 28 NON-VANILLA FLAGS + CRB PREP
-$(tail -25 ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}/BoardConfig.mk)::endgroup::"
+$(tail -25 ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}/BoardConfig.mk)
+::endgroup::"
 
     # 🔥 BUILD
     - id: build-cmd
@@ -128,7 +130,8 @@ $(tail -25 ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ i
     # 🔥 CRB KITCHEN PREP
     - if: inputs.CRB_PREP == 'true'
       run: mkdir -p crb-output/${{ inputs.DEVICE_NAME }} && cp ${{ env.FILE_PATH }}/*.img crb-output/${{ inputs.DEVICE_NAME }}/ && mkdir -p crb-output/${{ inputs.DEVICE_NAME }}/ORIGINAL_UPDATE && cp ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}/BoardConfig.mk crb-output/${{ inputs.DEVICE_NAME }}/ORIGINAL_UPDATE/ && cd crb-output && zip -r "${{ inputs.DEVICE_NAME }}-CRB-Kitchen.zip" ${{ inputs.DEVICE_NAME }} && echo "::group::✅ CRB PACKAGE READY
-${{ inputs.DEVICE_NAME }}-CRB-Kitchen.zip created!::endgroup::"
+${{ inputs.DEVICE_NAME }}-CRB-Kitchen.zip created!
+::endgroup::"
 
     # 🔥 RELEASE
     - if: env.CHECK_IMG_IS_OK == 'true'
