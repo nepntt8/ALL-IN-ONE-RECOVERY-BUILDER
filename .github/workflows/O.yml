@@ -1,4 +1,4 @@
-name: OrangeFox [OFRP] - NON-VANILLA A-ONLY
+name: OrangeFox [OFRP] - NON-VANILLA A-ONLY w/ ECHO DEBUG
 
 on:
   workflow_dispatch:
@@ -86,54 +86,98 @@ jobs:
         echo "Non-Vanilla: ${{ github.event.inputs.NON_VANILLA }}"
         echo "A-Only: ${{ github.event.inputs.A_ONLY }}"
         echo "Samsung: ${{ github.event.inputs.SAMSUNG_VARIANT }}"
+        echo "Manifest: ${{ github.event.inputs.MANIFEST_BRANCH }}"
+        echo "Device: ${{ github.event.inputs.DEVICE_NAME }}"
 
-    # ... [Keep Cleanup, Swap Space, Build Environment, Set-up Manifest unchanged] ...
+    - name: Clean-up
+      uses: rokibhasansagar/slimhub_actions@main
+
+    - name: Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 24
+
+    - name: Build Environment
+      run: |
+        echo "📦 Installing build environment..."
+        sudo apt update
+        sudo apt -y upgrade
+        if [ -d "scripts" ]; then
+          echo "Removing existing 'scripts' directory."
+          rm -rf scripts
+        fi
+        echo "Cloning repository into 'scripts' directory."
+        git clone https://gitlab.com/OrangeFox/misc/scripts
+        cd scripts
+        sudo bash setup/android_build_env.sh
+        echo "✅ Build env ready!"
+
+    - name: Set-up Manifest
+      if: github.event.inputs.MANIFEST_BRANCH == '11.0' || github.event.inputs.MANIFEST_BRANCH == '12.1'
+      run: |
+        echo "🔄 Setting up OrangeFox manifest..."
+        mkdir -p ${GITHUB_WORKSPACE}/OrangeFox
+        cd ${GITHUB_WORKSPACE}/OrangeFox
+        git config --global user.name "${{ github.actor }}"
+        git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+        git clone https://gitlab.com/OrangeFox/sync.git
+        cd sync
+        ./orangefox_sync.sh --branch ${{ github.event.inputs.MANIFEST_BRANCH }} --path ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        echo "✅ Manifest synced: fox_${{ github.event.inputs.MANIFEST_BRANCH }}"
 
     - name: Clone Device Tree
       run: |
+        echo "🌳 Cloning device tree..."
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
         git clone ${{ github.event.inputs.DEVICE_TREE }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
         cd ${{ github.event.inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        echo "✅ Device tree cloned: ${{ env.COMMIT_ID }}"
 
-    - name: 🔥 INJECT NON-VANILLA FLAGS
+    - name: 🔥 INJECT NON-VANILLA FLAGS w/ ECHO
       run: |
+        echo "⚙️  Injecting ECHO NON-VANILLA flags..."
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/${{ github.event.inputs.DEVICE_PATH }}
         cat >> BoardConfig.mk << 'EOF'
 
-# 🔥 NON-VANILLA ORANGEFOX FLAGS (A-Only Samsung)
-FOX_VARIANT := samsung
-FOX_VANILLA_BUILD := 0
-FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER := 1
-FOX_USE_BASH_SHELL := 1
-FOX_USE_NANO_EDITOR := 1
-FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER := 1
+# 🔥 NON-VANILLA ORANGEFOX FLAGS (ECHO DEBUG - A-Only Samsung M14x)
+echo FOX_VARIANT := samsung
+echo FOX_VANILLA_BUILD := 0
+echo FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER := 1
+echo FOX_USE_BASH_SHELL := 1
+echo FOX_USE_NANO_EDITOR := 1
 
-# A-Only
-FOX_AB_DEVICE := 0
-OF_VIRTUAL_AB_DEVICE := 0
+# A-Only (CRITICAL for M14x)
+echo FOX_AB_DEVICE := 0
+echo OF_VIRTUAL_AB_DEVICE := 0
 
 # AVB + GSI + CRB
-OF_PATCH_AVB20 := 1
-OF_SUPPORT_GSI_FLASHING := 1
-OF_NO_TREBLE_COMPATIBILITY_CHECK := 1
-OF_CRYPTPOLICY := 1
-OF_FIX_7ZIP_ZIP := 1
-OF_ALLOW_NEW_PARTITION_SCHEME := 1
+echo OF_PATCH_AVB20 := 1
+echo OF_SUPPORT_GSI_FLASHING := 1
+echo OF_NO_TREBLE_COMPATIBILITY_CHECK := 1
+echo OF_CRYPTPOLICY := 1
+echo OF_FIX_7ZIP_ZIP := 1
+echo OF_ALLOW_NEW_PARTITION_SCHEME := 1
 
-# Samsung M14x
-TARGET_SCREEN_DENSITY := 400
-BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
+# Samsung M14x Specific
+echo TARGET_SCREEN_DENSITY := 400
+echo BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
 EOF
-        echo "✅ 25+ NON-VANILLA FLAGS INJECTED!"
+        echo "✅ BoardConfig.mk updated with ECHO flags!"
+        echo "📋 ECHO Flags injected:"
+        echo "   echo FOX_VARIANT := samsung"
+        echo "   echo FOX_VANILLA_BUILD := 0"
+        echo "   echo FOX_AB_DEVICE := 0"
+        echo "   echo OF_PATCH_AVB20 := 1"
 
     - name: Building OrangeFox NON-VANILLA
       run: |
+        echo "🔨 Starting NON-VANILLA build..."
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         
-        # 🔥 EXPORT FLAGS AFTER LUNCH
+        echo "📤 Exporting environment flags..."
         export FOX_VARIANT=samsung
         export FOX_VANILLA_BUILD=0
         export FOX_AB_DEVICE=0
@@ -142,12 +186,57 @@ EOF
         export OF_CRYPTPOLICY=1
         export FOX_USE_NANO_EDITOR=1
         
+        echo "🍽️ Lunch: twrp_${{ github.event.inputs.DEVICE_NAME }}-eng"
         lunch twrp_${{ github.event.inputs.DEVICE_NAME }}-eng
+        
+        echo "🧹 Cleaning previous builds..."
         make clean
+        
+        echo "🚀 Building ${{ github.event.inputs.BUILD_TARGET }}image..."
         mka ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)
         echo "✅ NON-VANILLA A-Only OFRP COMPLETE!"
 
-    # ... [Keep Check if Recovery Exist, Rename, Include Recovery Installer, Recovery to tar unchanged] ...
+    - name: Check if Recovery Exist
+      run: |
+        echo "🔍 Checking build output..."
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        if [ -f out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.img ]; then
+            echo "✅ Recovery found!"
+            echo "CHECK_IMG_IS_OK=true" >> $GITHUB_ENV
+            echo "FILE_PATH=${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}" >> $GITHUB_ENV
+            echo "MD5_IMG=$(md5sum out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.img | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        else
+            echo "❌ No recovery image found!"
+            ls -la out/target/product/${{ github.event.inputs.DEVICE_NAME }} || echo "Directory empty"
+            exit 1
+        fi
+
+    - name: Rename the Recovery
+      run: |
+        echo "📝 Renaming recovery..."
+        cd ${{ env.FILE_PATH }}/
+        if [ "${{ github.event.inputs.BUILD_TARGET }}" = "recovery" ]; then
+          mv OrangeFox*.img recovery.img
+          echo "RECOVERY_TYPE=recovery" >> $GITHUB_ENV
+          echo "✅ Renamed to recovery.img"
+        fi
+
+    - name: Include Recovery Installer
+      if: github.event.inputs.RECOVERY_INSTALLER == 'true'
+      run: |
+        echo "📦 Adding recovery installer..."
+        cd ${{ env.FILE_PATH }}/
+        wget https://github.com/kinguser981/recovery-installer/releases/download/11256427880/recovery-installer.zip
+        zip -ur recovery-installer.zip ${{ env.RECOVERY_TYPE }}.img
+        echo "✅ Installer ZIP created!"
+
+    - name: Recovery to tar for Samsung devices
+      if: github.event.inputs.RECOVERY_TAR == 'true'
+      run: |
+        echo "📦 Creating Samsung tar..."
+        cd ${{ env.FILE_PATH }}/
+        tar -cvf ${{ env.RECOVERY_TYPE }}.tar ${{ env.RECOVERY_TYPE }}.img
+        echo "✅ Samsung tar created!"
 
     - name: Upload to Release
       if: env.CHECK_IMG_IS_OK == 'true'
@@ -157,18 +246,24 @@ EOF
           ${{ env.FILE_PATH }}/${{ env.RECOVERY_TYPE }}.img
           ${{ env.FILE_PATH }}/${{ env.RECOVERY_TYPE }}.tar
           ${{ env.FILE_PATH }}/recovery-installer.zip
-          ${{ env.FILE_PATH }}/OrangeFox*.zip
-        name: "[NON-VANILLA] OrangeFox [A-Only] ${{ inputs.DEVICE_NAME }} - ${{ env.BUILD_DATE }}"
+        name: "[NON-VANILLA] OrangeFox [A-Only] ${{ github.event.inputs.DEVICE_NAME }} - ${{ env.BUILD_DATE }}"
         tag_name: ${{ github.run_id }}
         body: |
-          ## 🔥 NON-VANILLA A-Only OrangeFox Build
+          ## 🔥 NON-VANILLA A-Only OrangeFox Build (ECHO DEBUG)
           ✅ **GSI Flashing** | **AVB 2.0** | **CRB Decrypt** | **Samsung UI**
           
-          **Flags:** FOX_VANILLA_BUILD=0 | OF_PATCH_AVB20=1 | FOX_AB_DEVICE=0
+          **ECHO Flags:** echo FOX_VANILLA_BUILD=0 | echo OF_PATCH_AVB20=1
           
-          - Branch: ${{ inputs.MANIFEST_BRANCH }}
-          - Device: [${{ inputs.DEVICE_NAME }}](${{ inputs.DEVICE_TREE }}/tree/${{ inputs.DEVICE_TREE_BRANCH }})
+          - Branch: ${{ github.event.inputs.MANIFEST_BRANCH }}
+          - Device: [${{ github.event.inputs.DEVICE_NAME }}](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
           - MD5: ${{ env.MD5_IMG }}
         prerelease: false
 
-    # ... [Keep LDCheck, Cleanup unchanged] ...
+    - name: Debug Output
+      if: always()
+      run: |
+        echo "=== FINAL DEBUG ==="
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }} || true
+        echo "📂 Output directory:"
+        ls -la out/target/product/${{ github.event.inputs.DEVICE_NAME }} 2>/dev/null || echo "No output dir"
+        echo "✅ Build logs complete!"
