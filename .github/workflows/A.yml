@@ -31,7 +31,7 @@ on:
         type: choice
         options: [boot, recovery, vendorboot]
       LDCHECK:
-        description: 'Path of blobs to check' 
+        description: 'Path of blobs to check'
         required: true
         default: 'system/bin/qseecomd'
       RECOVERY_TAR:
@@ -64,10 +64,14 @@ jobs:
 
     - name: Display Inputs
       run: |
-        printf "::group::User Environment Variables"
-        printf "Include Recovery Installer: %s" "${{ inputs.RECOVERY_INSTALLER }}"
-        printf "Release recovery.tar: %s" "${{ inputs.RECOVERY_TAR }}"
-        printf "::endgroup::"
+        printf "::group::User Environment Variables
+"
+        printf "Include Recovery Installer: %s
+" "${{ inputs.RECOVERY_INSTALLER }}"
+        printf "Release recovery.tar: %s
+" "${{ inputs.RECOVERY_TAR }}"
+        printf "::endgroup::
+"
 
     - name: Clean-up
       uses: rokibhasansagar/slimhub_actions@main
@@ -86,7 +90,6 @@ jobs:
           lib32z1-dev libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
           libssl-dev libxml2-utils lzop pngcrush rsync schedtool squashfs-tools \
           xsltproc zip zlib1g-dev python3 python3-pip clang lld unzip wget tar
-        
         rm -rf scripts
         git clone https://gitlab.com/OrangeFox/misc/scripts
         cd scripts && sudo bash setup/android_build_env.sh
@@ -107,14 +110,15 @@ jobs:
         cd ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
         git clone ${{ inputs.DEVICE_TREE }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
         cd ${{ inputs.DEVICE_PATH }}
-        printf "DEVICE_TREE_COMMIT=%s" "$(git rev-parse HEAD)" >> $GITHUB_ENV
+        printf "DEVICE_TREE_COMMIT=%s
+" "$(git rev-parse HEAD)" >> $GITHUB_ENV
 
     - name: 🔥 INJECT ALL 28 FLAGS (NO ECHO)
       run: |
-        printf "::group::🔥 Injecting ALL 28 OrangeFox Flags"
+        printf "::group::🔥 Injecting ALL 28 OrangeFox Flags
+"
         cd ~/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/${{ inputs.DEVICE_PATH }}
         
-        # 🔥 28 FLAGS ARRAY
         read -r -a ALL_FLAGS <<< '(
           "FOX_VANILLA_BUILD=0"
           "OF_DISABLE_MIUI_SPECIFIC_FEATURES=0"
@@ -150,8 +154,10 @@ jobs:
         : > flags.sh
         
         for flag in "${ALL_FLAGS[@]}"; do
-          printf "export %s" "$flag" >> flags.sh
-          printf "%s" "$flag" >> BoardConfig.mk
+          printf "export %s
+" "$flag" >> flags.sh
+          printf "%s
+" "$flag" >> BoardConfig.mk
         done
         
         printf "✅ %d FLAGS injected!
@@ -235,7 +241,7 @@ jobs:
         cd ${{ env.FILE_PATH }}
         tar -cvf ${{ env.RECOVERY_TYPE }}.tar ${{ env.RECOVERY_TYPE }}.img
 
-    - name: Generate Artifact List  # ✅ NO ECHO - PURE ARRAY
+    - name: Generate Artifact List
       if: env.CHECK_IMG_IS_OK == 'true'
       id: artifacts
       run: |
@@ -270,10 +276,15 @@ jobs:
           - GSI+AVB+Treble+Samsung+Non-Vanilla
           
           > ⚠️ Automated build - Test thoroughly!
+        prerelease: false
+        draft: false
+        generate_release_notes: false
 
     - name: Run LDCheck
       if: env.CHECK_IMG_IS_OK == 'true'
       run: |
+        printf "::group::🔍 LDCheck Analysis
+"
         mkdir -p tools && cd tools
         wget -q https://github.com/orao/ldcheck/releases/download/v0.1/ldcheck-linux.zip || true
         unzip -qo ldcheck-linux.zip 2>/dev/null || true
@@ -281,6 +292,8 @@ jobs:
         mv -n ldcheck ${{ env.FILE_PATH }}/ 2>/dev/null || true
         cd ${{ env.FILE_PATH }}
         python3 ldcheck -p "system/lib64:vendor/lib64:system/lib:vendor/lib" -d ${{ inputs.LDCHECK }}
+        printf "::endgroup::
+"
       continue-on-error: true
 
     - name: Cleanup Workspace
